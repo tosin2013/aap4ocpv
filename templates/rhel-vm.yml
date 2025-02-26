@@ -40,10 +40,9 @@ spec:
                 bus: virtio
               name: cloudinitdisk
           interfaces:
-            - bridge: {}
+            - masquerade: {}
               model: virtio
-              name: nic1
-          networkInterfaceMultiqueue: true
+              name: default
           rng: {}
         machine:
           type: pc-q35-rhel9.4.0
@@ -51,10 +50,8 @@ spec:
           guest: "{{ vm_memory }}"
         resources: {}
       networks:
-        - name: nic1
-          multus: {
-            "networkName": "default/vms-net1"
-          }
+        - name: default
+          pod: {}
       terminationGracePeriodSeconds: 180
       volumes:
         - dataVolume:

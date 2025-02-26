@@ -11,10 +11,10 @@ spec:
         creationTimestamp: null
         name: "{{ vm_name }}"
       spec:
-        source:
-          pvc:
-            name: rhel-9.4-gold-image
-            namespace: openshift-virtualization-os-images
+        sourceRef:
+          kind: DataSource
+          name: rhel9
+          namespace: openshift-virtualization-os-images
         storage:
           resources:
             requests:

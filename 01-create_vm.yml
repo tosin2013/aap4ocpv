@@ -1,12 +1,5 @@
 - name: Create a virtual machine
   hosts: localhost
-  vars:
-    openshift_fqdn: https://api.ocp4.example.com:6443
-    openshift_user: test1
-    openshift_password: Redhat!23
-  vars_files:
-    - ./vars/variables.yml
-
   tasks:
     - name: Login to OpenShift
       redhat.openshift.openshift_auth:

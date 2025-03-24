@@ -1,11 +1,5 @@
 - name: Add a new disk to VM
   hosts: localhost
-  vars:
-    openshift_fqdn: https://api.ocp4.example.com:6443
-    openshift_user: test1
-    openshift_password: Redhat!23
-  vars_files:
-    - ./vars/variables.yml
 
   tasks:
     - name: Login to OpenShift

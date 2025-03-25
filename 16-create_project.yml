@@ -1,0 +1,9 @@
+- name: Create a project
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: project.openshift.io/v1
+      metadata:
+        name: aap
+        labels:
+          kubernetes.io/metadata.name: aap

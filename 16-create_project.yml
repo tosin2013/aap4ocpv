@@ -1,5 +1,7 @@
 - name: Create a project
   hosts: localhost
+  vars:
+    project_name: default
 
   tasks:
     - name: Create Project
@@ -9,6 +11,6 @@
           apiVersion: project.openshift.io/v1
           kind: Project
           metadata:
-            name: aap
+            name: "{{ project_name }}"
             labels:
-              kubernetes.io/metadata.name: aap
+              kubernetes.io/metadata.name: "{{ project_name }}"

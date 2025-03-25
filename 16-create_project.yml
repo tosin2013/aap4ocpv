@@ -1,9 +1,14 @@
 - name: Create a project
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: project.openshift.io/v1
-      metadata:
-        name: aap
-        labels:
-          kubernetes.io/metadata.name: aap
+  hosts: localhost
+
+  tasks:
+    - name: Create Project
+      redhat.openshift.k8s:
+        state: present
+        definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: aap
+            labels:
+              kubernetes.io/metadata.name: aap

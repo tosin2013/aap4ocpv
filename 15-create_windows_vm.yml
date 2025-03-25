@@ -1,7 +1,7 @@
 - name: Create a Windows VM
   hosts: localhost
   vars:
-    project_name: default
+    project_name: aap
 
   tasks:
     - name: Create new Windows VM

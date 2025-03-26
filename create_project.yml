@@ -1,28 +1,9 @@
 - name: Hello World Sample
   hosts: localhost
-  vars:
-    openshift_fqdn: https://api.ocp4.example.com:6443
-    openshift_user: test1
-    openshift_password: Redhat!23
-
+  
   tasks:
-    - name: Login to OpenShift
-      redhat.openshift.openshift_auth:
-        host: "{{ openshift_fqdn }}"
-        username: "{{ openshift_user }}"
-        password: "{{ openshift_password }}"
-        validate_certs: false
-      register: openshift_auth_results
-
-    - name: Print authentication rsults
-      ansible.builtin.debug:
-        var: openshift_auth_results
-
     - name: Create namespace
       redhat.openshift.k8s:
-        api_key: "{{ openshift_auth_results.openshift_auth.api_key }}"
-        host: "{{ openshift_fqdn }}"
-        validate_certs: false
         state: present
         definition:
           apiVersion: project.openshift.io/v1

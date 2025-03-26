@@ -20,7 +20,7 @@ privileges for now and we'll give it a token which expires in 90 days.
 ```
 oc create sa aap-user -n aap
 oc adm policy add-cluster-role-to-user cluster-admin aap-user -n aap
-oc create token --duration=7776000 aap-user -n aap
+oc create token --duration 7776000s aap-user -n aap
 ```
 
 For more information on creating a service account for AAP, see the official documentation: https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/controller-credentials#proc-controller-credential-create-openshift-account.

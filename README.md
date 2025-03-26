@@ -1,15 +1,15 @@
-= aap4ocp =
+# aap4ocp
 
 This is a collection of ansible tasks used for day 1 and day 2
 administration of OpenShift Virtualization. It's designed to be run
 from AAP - your mileage may vary running from Navigator or the
 commandline.
 
-== Setup ==
+## Setup
 
 You'll need a couple of things for this automation to work.
 
-=== Service Account ===
+### Service Account
 
 First, you'll want to have a service account which AAP can use to run
 the automation against your OpenShift cluster. Starting with OpenShift
@@ -28,13 +28,13 @@ For more information on creating a service account for AAP, see the official doc
 The output of the last command should be the token that we'll use to
 create the credential in AAP.
 
-=== Credential in AAP ===
+### Credential in AAP
 
 To create the credential in AAP, you'll need the following information
 
-# The API endpoint of the cluster
-# The token associated with the service account
-# Optionally the SSL/CA information.
+1. The API endpoint of the cluster
+2. The token associated with the service account
+3. Optionally the SSL/CA information.
 
 For steps on creating a credential for your cluster, see:
 https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/controller-credentials#controller-getting-started-create-credential

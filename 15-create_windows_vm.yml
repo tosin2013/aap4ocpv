@@ -2,28 +2,16 @@
   hosts: localhost
   vars:
     project_name: aap
+    vm_name: winders
+    vm_iso: install-disk
+    vm_storage_class: windows-vms
+    vm_running: true
+    vm_cpus: 4
+    vm_mem: 8Gi
+    # TODO: MAC ADDRESS/NETWORKS
 
   tasks:
     - name: Create new Windows VM
       redhat.openshift.k8s:
         state: present
         template: templates/windowsvm.j2.yml
-      
-  # redhat.vm:
-  #   namespace: '{{ deploycosmicvm_vm_folder }}'
-  #   name: '{{ deploycosmic_vm_info.name }}'
-  #   state: poweredOff
-  #   guest_id: '{{ guest_id }}' == Windows9Server64Guest
-  #   datastore: storageClass
-  #   hardware: list of stuff i.e. firmware, mb, reservation, same
-  #   cdrom: 'PV'
-  #   disk: list of disks
-  #   networks:
-  #     list of networks
-  #   resource_pool: backup or noclone
-  #   annotations: LOEFP
-  #   tags: vm:loe-fp:
-
-
-# - name: Eject CDROM
-#   # Eject the CDROM

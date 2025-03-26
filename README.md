@@ -39,3 +39,27 @@ To create the credential in AAP, you'll need the following information
 For steps on creating a credential for your cluster, see:
 https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/controller-credentials#controller-getting-started-create-credential
 
+### Installation Disk
+
+If you're making some Winders VMs or doing a Kickstart build, you'll
+probably want to download an ISO to boot from for the install. In this case, you can create a DataVolume from an ISO like so:
+
+```
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: "install-disk"
+spec:
+  source:
+      http:
+         url: "https://download.cirros-cloud.net/0.4.0/cirros-0.4.0-x86_64-disk.img" # S3 or GCS
+         secretRef: "" # Optional
+         certConfigMap: "" # Optional
+  storage:
+    resources:
+      requests:
+        storage: "64Mi"
+```
+
+For more information, see https://github.com/kubevirt/containerized-data-importer/blob/main/doc/datavolumes.md#source
+

@@ -1,0 +1,16 @@
+- name: Create a project
+  hosts: localhost
+  vars:
+    project_name: default
+
+  tasks:
+    - name: Create Project
+      redhat.openshift.k8s:
+        state: present
+        definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: "{{ project_name }}"
+            labels:
+              kubernetes.io/metadata.name: "{{ project_name }}"

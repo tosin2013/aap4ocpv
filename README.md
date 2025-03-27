@@ -3,6 +3,7 @@
 ## Overview
 This project provides a comprehensive solution for managing virtual machines (VMs) on OpenShift using Ansible Automation Platform (AAP) 2.5. It includes playbooks, scripts, and documentation for automating VM lifecycle operations and system management.
 
+
 ## Prerequisites
 - OpenShift 4.18.4
 - OpenShift Virtualization 4.18.1
@@ -55,13 +56,25 @@ cd <repository-name>
 ./build-ee.sh
 ```
 
-### 4. AAP Installation
+### 4. Service Account Setup
+```bash
+# Create service account for AAP
+oc create sa aap-user -n aap
+
+# Add cluster admin role
+oc adm policy add-cluster-role-to-user cluster-admin aap-user -n aap
+
+# Create token (valid for 90 days)
+oc create token --duration 7776000s aap-user -n aap
+```
+
+### 5. AAP Installation
 ```bash
 # Deploy AAP on OpenShift
 ansible-playbook deploy-aap.yml
 ```
 
-### 5. VM Management
+### 6. VM Management
 ```bash
 # Create a new VM
 ansible-playbook 01-create_vm.yml
@@ -137,6 +150,25 @@ The project uses:
 - `ansible-navigator.yml` for execution environment configuration
 - Collections in `/home/lab-user/.ansible/collections:/usr/share/ansible/collections`
 
+### Installation Disk Setup
+For Windows VMs or Kickstart builds, create a DataVolume from an ISO:
+```yaml
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: "install-disk"
+spec:
+  source:
+      http:
+         url: "https://download.cirros-cloud.net/0.4.0/cirros-0.4.0-x86_64-disk.img"
+         secretRef: "" # Optional
+         certConfigMap: "" # Optional
+  storage:
+    resources:
+      requests:
+        storage: "64Mi"
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -184,7 +216,32 @@ oc logs -n aap deployment/automation-controller
 [Add your license information here]
 
 ## Support
-[Add support contact information here] 
+[Add support contact information here]
+
+## Project Statistics
+- Stars: 0
+- Watchers: 0
+- Forks: 0
+- Languages: HTML (100.0%)
+
+## Suggested Workflows
+Based on your tech stack, we recommend the following workflows:
+
+### Jekyll using Docker image
+Package a Jekyll site using the jekyll/builder Docker image.
+
+### SLSA Generic generator
+Generate SLSA3 provenance for your existing release workflows.
+
+## About
+This project is a collection of ansible tasks used for day 1 and day 2 administration of OpenShift Virtualization. It's designed to be run from AAP - your mileage may vary running from Navigator or the commandline.
+
+## Resources
+- [Readme](README.md)
+- [Activity](https://github.com/yourusername/aap4ocpv/pulse)
+- [Releases](https://github.com/yourusername/aap4ocpv/releases)
+- [Packages](https://github.com/yourusername/aap4ocpv/packages)
+
 # aap4ocp
 
 This is a collection of ansible tasks used for day 1 and day 2
@@ -250,3 +307,30 @@ spec:
 
 For more information, see https://github.com/kubevirt/containerized-data-importer/blob/main/doc/datavolumes.md#source
 
+### Logs
+```bash
+# Check AAP operator logs
+oc logs -n aap deployment/aap-operator
+
+# Check automation controller logs
+oc logs -n aap deployment/automation-controller
+```
+
+## Documentation
+- [Architecture Documentation](docs/architecture-documentation.md)
+- [Blog Series](docs/blog-series-plan.md)
+- [Prerequisites](docs/aap-prerequisites.md)
+- [OpenShift Environment](docs/openshift-environment.md)
+
+## Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+[Add your license information here]
+
+## Support
+[Add support contact information here] 

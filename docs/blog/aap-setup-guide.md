@@ -52,188 +52,282 @@ Before starting, ensure you have:
 - Basic understanding of Ansible and KubeVirt
 - Red Hat subscription for AAP 2.5
 - To get password for `ansible-admin` user, run `oc get secret -n aap ansible-admin-password -o jsonpath='{.data.password}' | base64 --decode`
+- Update AutomationHub Remotes and connections 
+  - Navigate to -> `Automation Hub`
+  - Click on -> `Remotes`
+  - Click on Edit -> `rh-certified`
+  - Update `Token` or `Username` and `Password`
+  - Click on `Save Remote`
+- Update Ansible Hub Repositories
+
 
 ## Initial Setup
 
 ### 1. Configure Execution Environment
-See `ansible-navigator.yml`:
+
+#### A. Create Execution Environment Definition
+Create `execution-environment.yml`:
+```yaml
+version: 3
+
+images:
+  base_image:
+    name: registry.redhat.io/ansible-automation-platform-25/ee-minimal-rhel8:latest
+
+dependencies:
+  galaxy:
+    collections:
+      - kubernetes.core>=2.4.0
+      - community.kubernetes>=2.0.0
+      - operator_sdk.util>=0.3.0
+      - redhat.openshift:4.0.1
+      - redhat.openshift_virtualization>=1.0.0
+
+  python:
+    - kubernetes>=12.0.0
+    - openshift>=0.12.0
+    - jmespath>=1.0.0
+
+  system:
+    - python38
+    - python38-pip
+    - git
+
+additional_build_steps:
+  prepend_final:
+    - RUN pip3 install --upgrade pip setuptools
+  append_final:
+    - RUN update-ca-trust
+    - ENV KUBECONFIG=/etc/openshift/kubeconfig
+    - ENV ANSIBLE_CONFIG=/etc/ansible/ansible.cfg
+```
+
+#### B. Build and Push Execution Environment
+1. Install prerequisites:
+```bash
+# Install ansible-builder with specific version for AAP 2.5
+pip3 install ansible-builder==3.0.0 --user
+
+# Install podman (if not already installed)
+sudo dnf install -y podman
+
+# Login to registry
+podman login registry.redhat.io
+```
+
+2. Build the execution environment:
+```bash
+# Create build context
+mkdir -p ee-build
+cp execution-environment.yml ee-build/
+
+# Build the image
+cd ee-build
+ansible-builder build -t vm-management-ee:latest -v3 --prune-images
+```
+
+3. Verify the build:
+```bash
+# Check the image
+podman images | grep vm-management-ee
+
+# Test the image locally
+podman run --rm vm-management-ee:latest ansible --version
+podman run --rm vm-management-ee:latest ansible-galaxy collection list
+```
+
+4. Push to registry:
+```bash
+# Tag the image
+podman tag vm-management-ee:latest quay.io/yourusername/vm-management-ee:latest
+
+# Login to your registry
+podman login quay.io
+
+# Push the image
+podman push quay.io/yourusername/vm-management-ee:latest
+```
+
+### Troubleshooting Execution Environment Builds
+
+#### Common Issues and Solutions
+
+1. **Collection Installation Errors**
+   - Error: `Neither the collection requirement entry key 'name', nor 'source' point to a concrete resolvable collection artifact`
+   - Solution: Update collection format in `execution-environment.yml`:
+     ```yaml
+     collections:
+       - name: kubernetes.core
+         version: ">=2.4.0"
+         source: https://galaxy.ansible.com
+     ```
+   - Ensure you're logged into Red Hat registry:
+     ```bash
+     podman login registry.redhat.io
+     ```
+   - Configure Automation Hub token:
+     ```bash
+     ansible-galaxy collection list
+     # Copy the token from Automation Hub UI
+     ansible-galaxy collection install redhat.openshift --token <your-token>
+     ```
+
+2. **Build Process Troubleshooting**
+   - Clean up previous build artifacts:
+     ```bash
+     rm -rf context/
+     podman rmi vm-management-ee:latest
+     ```
+   - Enable verbose logging:
+     ```bash
+     ansible-builder build -t vm-management-ee:latest -v3 --prune-images
+     ```
+   - Check collection paths:
+     ```bash
+     podman run --rm vm-management-ee:latest ansible-config dump | grep COLLECTIONS_PATH
+     ```
+
+3. **Authentication Issues**
+   - Verify Automation Hub configuration:
+     ```bash
+     cat ~/.ansible/galaxy_token
+     ```
+   - Test collection access:
+     ```bash
+     ansible-galaxy collection install redhat.openshift --force
+     ```
+   - Configure offline token if needed:
+     ```bash
+     ansible-galaxy collection install redhat.openshift_virtualization \
+       --server https://console.redhat.com/ansible/automation-hub \
+       --token <offline-token>
+     ```
+
+#### Build Verification Steps
+
+1. Check the execution environment structure:
+```bash
+podman run --rm vm-management-ee:latest ls -la /usr/share/ansible/collections
+```
+
+2. Verify Python packages:
+```bash
+podman run --rm vm-management-ee:latest pip3 list
+```
+
+3. Test Ansible functionality:
+```bash
+podman run --rm vm-management-ee:latest ansible-playbook --version
+```
+
+#### Monitoring and Logging
+
+1. Enable verbose logging during build:
+```bash
+ansible-builder build -t vm-management-ee:latest -v3 --prune-images
+```
+
+2. Check container logs:
+```bash
+podman logs -f $(podman ps -q --filter name=ansible-builder)
+```
+
+#### C. Configure in AAP
+1. Navigate to Administration → Execution Environments
+2. Click "Add"
+3. Fill in:
+   - Name: "vm-management-ee"
+   - Image: "quay.io/yourusername/vm-management-ee:latest"
+   - Pull Policy: "Always"
+   - Description: "VM Management Execution Environment for OpenShift VM Management"
+   - Organization: "Default"
+4. Click "Save"
+
+#### D. Test the Execution Environment
+1. Create a test job template:
+   - Name: "Test EE"
+   - Job Type: "Run"
+   - Inventory: "Demo Inventory"
+   - Project: "vm-management"
+   - Playbook: "test-ee.yml"
+   - Execution Environment: "vm-management-ee"
+
+2. Create a test playbook (`test-ee.yml`):
 ```yaml
 ---
-ansible-navigator:
-  execution-environment:
-    container-engine: podman
-    enabled: true
-    image: quay.io/weishen/ocpv-ee:latest
-    pull:
-      policy: never
-  logging:
-    level: debug
+- name: Test Execution Environment
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Verify Python modules
+      pip:
+        name: kubernetes
+        state: present
+      check_mode: yes
+      register: pip_check
+
+    - name: Verify collections
+      command: ansible-galaxy collection list
+      register: collection_check
+
+    - debug:
+        var: pip_check
+
+    - debug:
+        var: collection_check.stdout_lines
 ```
-* Under Execution Environment click on -> `Create Execution Environment`
-* Click on -> `Create Execution Environment`
+
+3. Run the test job template and verify the output shows:
+   - Required Python modules are available
+   - Required collections are installed
+   - No errors in execution
+
+### 2. Create OpenShift Service Account
+1. Create a new project for AAP:
+```bash
+oc new-project vm-testing
+```
+
+2. Create a service account:
+```bash
+oc create serviceaccount aap-sa -n aap
+oc create serviceaccount aap-sa -n vm-testing 
+```
+
+3. Add necessary roles to the service account:
+```bash
+oc adm policy add-role-to-user admin -z aap-sa -n aap 
+oc adm policy add-role-to-user admin -z aap-sa -n vm-testing 
+```
+
+4. Configure Credentials in AAP
+* Navigate to -> `Infrastructure` -> `Credentials`
+* Click on -> `Create Credential`
 * Fill in the following:
-  * Name: `ocpv-ee`
-  * Image: `quay.io/weishen/ocpv-ee:latest`
-  * Pull: `Always pull container before running`
-  
+  * Name: `kubevirt-credentials`
+  * Credential Type: `OpenShift or Kubernetes API Bearer Token`
+  * Kubernetes API Endpoint: `oc cluster-info`
+  * Token: `oc create token aap-sa -n vm-testing`
 
-### Execution Environment Architecture
-![Execution Environment](images/execution-environment.png)
-*Figure 4: Execution environment configuration and components*
+5. Save the token for use in AAP credentials.
 
-### 2. Configure project in AAP
+### 3. Configure project in AAP
 * Fork [aap4ocpv](https://github.com/tosin2013/aap4ocpv) then point the SCM URL to your fork
 * Navigate to -> `Projects`
 * Click on -> `Create Project`
 * Fill in the following:
-  * Name: `ocpv-project`
+  * Name: `vm-management`
   * SCM Type: `Git`
+  * Execution Environment: `Default execution environment`
   * SCM URL: `https://github.com/tosin2013/aap4ocpv.git`
   * SCM Branch: `main`
+  * Update Options: `Update on Launch`
 
-### 2. Configure Project Creation
-Create `create_project.yml`:
-```yaml
-- name: Hello World Sample
-  hosts: localhost
-  vars:
-    openshift_fqdn: https://api.ocp4.example.com:6443
-    openshift_user: test1
-    openshift_password: Redhat!23
+### 4. Configure KubeVirt Inventory
+Infrastructure -> Inventories -> Create Inventory
+* Fill in the following:
 
-  tasks:
-    - name: Login to OpenShift
-      redhat.openshift.openshift_auth:
-        host: "{{ openshift_fqdn }}"
-        username: "{{ openshift_user }}"
-        password: "{{ openshift_password }}"
-        validate_certs: false
-      register: openshift_auth_results
+![Inventory](images/inventory.png)
+* Click `Create Inventory`
 
-    - name: Create namespace
-      redhat.openshift.k8s:
-        api_key: "{{ openshift_auth_results.openshift_auth.api_key }}"
-        host: "{{ openshift_fqdn }}"
-        validate_certs: false
-        state: present
-        definition:
-          apiVersion: project.openshift.io/v1
-          kind: Project
-          metadata:
-            name: wm-testing
-```
-
-### 3. Configure KubeVirt Inventory
-Create `inventory.kubevirt.yml`:
-```yaml
----
-plugin: redhat.openshift_virtualization.kubevirt
-host: https://api.ocp4.example.com:6443
-validate_certs: false
-```
-
-### 4. Configure Kubernetes Credentials
-Create `k8s_custom_creds.yml`:
-```yaml
----
-fields:
-  - type: string
-    id: kube_api
-    label: Kubernetes API Endpoint
-  - type: string
-    id: kube_token
-    label: Kubernetes API Token
-    secret: true
-required:
-  - kube_api
-  - kube_token
----
-env:
-  K8S_AUTH_HOST: "{{ kube_api }}"
-  K8S_AUTH_API_KEY: "{{ kube_token }}"
-```
-
-## AAP Configuration Steps
-
-### 1. Create Organization
-1. Navigate to Administration → Organizations
-2. Click "Add" button
-3. Fill in:
-   - Name: "vm-management"
-   - Description: "Organization for VM management"
-
-### 2. Configure Credentials
-1. Navigate to Resources → Credentials
-2. Click "Add" button
-3. Select "Kubernetes Bearer Token"
-4. Fill in:
-   - Name: "kubevirt-credentials"
-   - Organization: "vm-management"
-   - Kubernetes API Endpoint: Your OpenShift API endpoint
-   - Kubernetes API Token: Your service account token
-   - Description: "Credentials for KubeVirt operations"
-
-### 3. Create Project
-1. Navigate to Resources → Projects
-2. Click "Add" button
-3. Fill in:
-   - Name: "vm-management"
-   - Organization: "vm-management"
-   - SCM Type: "Git"
-   - SCM URL: Your Git repository URL
-   - SCM Branch: "main"
-   - Update Options: Check "Clean" and "Delete on Update"
-
-### 4. Configure Inventory
-1. Navigate to Resources → Inventories
-2. Click "Add" button
-3. Fill in:
-   - Name: "kubevirt-inventory"
-   - Organization: "vm-management"
-   - Variables: Paste contents of `inventory.kubevirt.yml`
-   - Source: "Custom Script"
-   - Update Options: Check "Overwrite" and "Update on Launch"
-
-### 5. Create Execution Environment
-1. Navigate to Administration → Execution Environments
-2. Click "Add" button
-3. Fill in:
-   - Name: "ee-vm-management"
-   - Image: "quay.io/weishen/ocpv-ee:latest"
-   - Pull: "Never pull container before running"
-   - Resource limits:
-     - CPU: 1
-     - Memory: 2Gi
-   - Organization: "vm-management"
-   - Description: "Execution environment for VM management"
-
-## Testing the Setup
-
-### 1. Verify Project Sync
-1. Navigate to Resources → Projects
-2. Select "vm-management"
-3. Click "Sync" button
-4. Check job status
-
-### 2. Test Inventory
-1. Navigate to Resources → Inventories
-2. Select "kubevirt-inventory"
-3. Click "Sources" tab
-4. Click "Sync" button
-5. Verify hosts are discovered
-
-### 3. Test Credentials
-1. Navigate to Resources → Credentials
-2. Select "kubevirt-credentials"
-3. Click "Test" button
-4. Verify connection is successful
-
-## Next Steps
-1. Review [Part 1: Foundation and Architecture](part1-foundation.md) for detailed understanding
-2. Proceed to [Part 2: Basic Operations](part2-basic-ops.md) for VM lifecycle management
-3. Check [Troubleshooting Guide](troubleshooting.md) if you encounter issues
-
-## Related Resources
-- [Ansible Automation Platform Documentation](https://docs.ansible.com/automation-controller/latest/html/userguide/index.html)
-- [OpenShift Virtualization Guide](https://docs.openshift.com/container-platform/4.18/virt/vm_management/vm_management.html)
-- [KubeVirt Documentation](https://kubevirt.io/user-guide/docs/latest/operations/index.html) 
+Select `

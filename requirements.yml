@@ -1,4 +1,13 @@
 collections:
 - name: redhat.openshift
+  source: automation_hub
 - name: redhat.openshift_virtualization
+  source: automation_hub
 - name: kubernetes.core
+  source: automation_hub
+- name: ansible.posix
+  source: automation_hub
+- name: redhat.rhel_system_roles
+  source: automation_hub
+- name: redhat.satellite
+  source: automation_hub
